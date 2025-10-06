@@ -1,0 +1,44 @@
+# --- System & IDE files ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+*.pyo
+
+# --- Data folders (too large for Git) ---
+data/raw/
+data/processed/
+data/embeddings/
+data/vectorstores/
+data/tmp/
+data/cache/
+*.faiss
+*.pkl
+*.parquet
+*.zip
+
+# --- Model checkpoints ---
+checkpoint/
+checkpoints/
+*.bin
+*.pt
+*.safetensors
+*.ckpt
+
+# --- Notebooks temporary files ---
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# --- Environment / dependencies ---
+env/
+venv/
+.venv/
+*.log
+*.tmp
+*.lock
+
+# --- OS generated files ---
+ehthumbs.db
+Desktop.ini
