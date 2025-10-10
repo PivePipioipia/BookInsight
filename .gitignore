@@ -42,3 +42,8 @@ venv/
 # --- OS generated files ---
 ehthumbs.db
 Desktop.ini
+
+data/image_cache/
+*.jpg
+*.jpeg
+*.png
