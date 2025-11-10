@@ -1,110 +1,75 @@
-"""
-smart_retriever.py
-==================
-Phase 3: Smart Retriever Layer for BookInsight
+from config import RRF_K
+from vectorstore import BookVectorStore
+from sql_database import SQLDatabase
+from retriever.query_expander import OpenAIQueryExpander
 
-- Expands user queries via Mistral-7B-Instruct (local inference)
-- Performs multi-query multimodal retrieval using TextImageRetriever
-- Fuses results via Reciprocal Rank Fusion (RRF)
-
-Author: BookInsight R&D
-"""
-
-from typing import List, Dict
-import numpy as np
-from src.retriever.text_image_retriever import TextImageRetriever
-
-import logging
-logging.basicConfig(format="[%(levelname)s] %(message)s", level=logging.INFO)
-
-
+print("t")
 class SmartRetriever:
     """
-    Smart retriever with query expansion and multimodal fusion.
-
-    Attributes
-    ----------
-    retriever : TextImageRetriever
-        The base multimodal retriever (text + image FAISS).
-    llm : object
-        Local Mistral model for query expansion (transformers pipeline).
+    Class "điều phối" (orchestrator) chính, kết hợp tất cả các thành phần:
+    1. Query Expander (OpenAI)
+    2. Vector Store (FAISS + BGE)
+    3. RRF (Logic hợp nhất)
+    4. SQL Database (Lấy chi tiết)
     """
+    def __init__(self, device='cpu'):
+        print("[SmartRetriever] Đang khởi tạo các thành phần...")
+        self.vector_store = BookVectorStore(device=device)
+        self.sql_db = SQLDatabase()
+        self.query_expander = OpenAIQueryExpander()
+        self.rrf_k = RRF_K
+        print("[SmartRetriever] Khởi tạo hoàn tất.")
 
-    def __init__(self, retriever: TextImageRetriever):
-        self.retriever = retriever
-        self.llm = self._load_local_llm()
-
-
-    def _load_local_llm(self):
-        """Load local Mistral-7B-Instruct (free offline paraphraser)."""
-        try:
-            from transformers import pipeline
-            logging.info("Loading Mistral-7B-Instruct model for query expansion...")
-            llm = pipeline(
-                "text-generation",
-                model="mistralai/Mistral-7B-Instruct-v0.2",
-                torch_dtype="auto",
-                device_map="auto",
-                max_new_tokens=128,
-            )
-            return llm
-        except Exception as e:
-            logging.warning(f" Could not load Mistral locally: {e}")
-            logging.warning("Falling back to simple rule-based paraphraser.")
-            return None
-
-
-    def expand_queries(self, query: str, n: int = 5) -> List[str]:
-        """Generate multiple paraphrased queries using Mistral or fallback."""
-        if self.llm:
-            prompt = (
-                f"You are a helpful AI that generates {n} paraphrases "
-                f"of the user query in English.\n"
-                f"User query: '{query}'\n"
-                f"Return only the list of paraphrases, one per line."
-            )
-            output = self.llm(prompt)[0]["generated_text"]
-            candidates = [
-                line.strip("-•1234567890. ").strip()
-                for line in output.split("\n")
-                if len(line.strip()) > 10
-            ]
-            queries = list(dict.fromkeys(candidates))[:n]
-        else:
-            # fallback: simple template-based variants
-            queries = [
-                query,
-                query.replace("children", "kids"),
-                query.replace("fantasy", "adventure"),
-                f"a story about {query}",
-                f"{query} book for young readers",
-            ][:n]
-
-        logging.info(f"Generated {len(queries)} query variants:")
-        for q in queries:
-            logging.info(f"  • {q}")
-        return queries
-
-    # Multi-query multimodal search
-
-    def search_multimodal(self, query: str, n_expand: int = 3, k: int = 10) -> List[Dict]:
+    def _reciprocal_rank_fusion(self, search_results_list, k=60):
         """
-        Expand a query, run multimodal retrieval for each variant,
-        and fuse all results via RRF.
+        Logic RRF (lấy từ notebook cell 10).
+        Đây là một phương thức "private".
         """
-        queries = self.expand_queries(query, n_expand)
-        all_text, all_image = [], []
+        scores = {}
+        for results in search_results_list:
+            for rank, pos in enumerate(results):
+                doc_score = 1.0 / (k + (rank + 1))
+                if pos not in scores:
+                    scores[pos] = 0.0
+                scores[pos] += doc_score
 
-        for q in queries:
-            logging.info(f" Searching for variant: '{q}'")
-            try:
-                t_res = self.retriever.retrieve_text(q, k)
-                i_res = self.retriever.retrieve_image_by_text(q, k)
-                all_text.extend(t_res)
-                all_image.extend(i_res)
-            except Exception as e:
-                logging.error(f"Search failed for '{q}': {e}")
+        return sorted(scores.items(), key=lambda item: item[1], reverse=True)
 
-        fused = self.retriever.fuse_results(all_text, all_image, method="rrf")
-        logging.info(f" Fused {len(fused)} total results from {len(queries)} query variants.")
-        return fused
+    def retrieve(self, query, top_k=5):
+        """
+        Phương thức "công khai" (public) để thực hiện toàn bộ pipeline.
+        """
+        print(f"\n[SmartRetriever] Bắt đầu truy vấn cho: '{query}'")
+        
+        SEARCH_DEPTH_K = 20
+
+        all_queries = self.query_expander.expand_query(query)
+        
+        all_search_results = []
+        print("[SmartRetriever] Đang thực hiện tìm kiếm song song...")
+        for q in all_queries:
+            
+            _, positions, _ = self.vector_store.search(q, k=SEARCH_DEPTH_K)
+            all_search_results.append(positions)
+            
+        print("[SmartRetriever] Đang hợp nhất kết quả với RRF...")
+        fused_results_with_scores = self._reciprocal_rank_fusion(all_search_results, self.rrf_k)
+        
+        final_results = fused_results_with_scores[:top_k]
+        final_positions = [pos for pos, score in final_results]
+        
+        final_unique_ids = [self.vector_store.unique_ids_list[i] for i in final_positions]
+        
+        book_details_list = self.sql_db.get_details_by_ids(final_unique_ids)
+        
+        final_books_with_scores = []
+        for i, book in enumerate(book_details_list):
+            book['rrf_score'] = final_results[i][1] # Gắn điểm RRF
+            final_books_with_scores.append(book)
+            
+        print("[SmartRetriever] Truy vấn RAG-Fusion hoàn tất.")
+        return final_books_with_scores
+
+    def close(self):
+        """Đóng kết nối SQL khi hoàn tất."""
+        self.sql_db.close()

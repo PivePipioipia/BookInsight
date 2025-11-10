@@ -1,4 +1,3 @@
-# --- System & IDE files ---
 .DS_Store
 Thumbs.db
 .vscode/
@@ -7,7 +6,6 @@ __pycache__/
 *.pyc
 *.pyo
 
-# --- Data folders (too large for Git) ---
 data/raw/
 data/processed/
 data/embeddings/
@@ -19,7 +17,6 @@ data/cache/
 *.parquet
 *.zip
 
-# --- Model checkpoints ---
 checkpoint/
 checkpoints/
 *.bin
@@ -27,11 +24,9 @@ checkpoints/
 *.safetensors
 *.ckpt
 
-# --- Notebooks temporary files ---
 .ipynb_checkpoints/
 *.nbconvert.ipynb
 
-# --- Environment / dependencies ---
 env/
 venv/
 .venv/
@@ -39,7 +34,6 @@ venv/
 *.tmp
 *.lock
 
-# --- OS generated files ---
 ehthumbs.db
 Desktop.ini
 
@@ -47,3 +41,13 @@ data/image_cache/
 *.jpg
 *.jpeg
 *.png
+
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.parquet
+*.npy
+*.faiss
+*.pkl
+*.log

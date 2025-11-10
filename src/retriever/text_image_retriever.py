@@ -100,6 +100,11 @@ class TextImageRetriever:
         results = self.text_store.search(query_vec, k=k)
         for r in results:
             r["source"] = "text"
+            try:
+                meta = self.text_store.meta.iloc[r["id"]].to_dict()
+                r["metadata"] = meta
+            except Exception:
+                r["metadata"] = {}
         return results
 
     def retrieve_image_by_text(self, query: str, k: int = 10) -> List[Dict]:
@@ -136,6 +141,11 @@ class TextImageRetriever:
         results = self.image_store.search(query_vec, k=k)
         for r in results:
             r["source"] = "image"
+            try:
+                meta = self.image_store.meta.iloc[r["id"]].to_dict()
+                r["metadata"] = meta
+            except Exception:
+                r["metadata"] = {}
         return results
 
     def fuse_results(
@@ -230,4 +240,7 @@ class TextImageRetriever:
             if img:
                 print(f"     🖼 {img}")
 
+        for r in fused:
+            r["source"] = ",".join(r.get("sources", [])) if isinstance(r.get("sources"), list) else r.get("sources",
+                                                                                                          "?")
         return fused

@@ -1,15 +1,15 @@
 import os
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-DATA_DIR = os.path.join(BASE_DIR, "data")
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+SQL_DB_PATH = os.path.join(DATA_DIR, "database", "books.db")
 
-RAW_DIR = os.path.join(DATA_DIR, "raw")
-PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
-EMBEDDINGS_DIR = os.path.join(DATA_DIR, "embeddings")
-VECTORSTORE_DIR = os.path.join(DATA_DIR, "vectorstores")
+VS_DIR = os.path.join(DATA_DIR, "vectorstores")
+FAISS_INDEX_PATH = os.path.join(VS_DIR, "index.faiss")
+EMBEDDINGS_PATH = os.path.join(VS_DIR, "embeddings.npy")
+META_PATH = os.path.join(VS_DIR, "unique_ids.pkl")
 
-os.makedirs(EMBEDDINGS_DIR, exist_ok=True)
-os.makedirs(VECTORSTORE_DIR, exist_ok=True)
-
-print(f" Config loaded. Base dir: {BASE_DIR}")
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+LLM_MODEL = "gpt-3.5-turbo"
+RRF_K = 60

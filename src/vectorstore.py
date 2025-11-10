@@ -1,76 +1,40 @@
-import os
-import pandas as pd
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
+import faiss
+import pickle
+import numpy as np
+from sentence_transformers import SentenceTransformer
+import config
 
-def build_faiss_index(
-    df: pd.DataFrame,
-    id_col: str,
-    text_col: str,
-    embed_col: str,
-    save_dir: str,
-):
-    """Build FAISS index from DataFrame include embedding."""
+class BookVectorStore:
+    def __init__(self, device='cpu'):
+        print(f"[VectorStore] Đang khởi tạo...")
+        print(f"[VectorStore] Đang tải Model Embedding: {config.EMBEDDING_MODEL}")
+        self.model = SentenceTransformer(config.EMBEDDING_MODEL, device=device)
 
-    os.makedirs(save_dir, exist_ok=True)
-    print(f" Building FAISS index for {len(df)} documents...")
+        print(f"[VectorStore] Đang tải FAISS index từ: {config.FAISS_INDEX_PATH}")
+        self.index = faiss.read_index(config.FAISS_INDEX_PATH)
 
-    texts = df[text_col].tolist()
-    ids = df[id_col].astype(str).tolist()
-    vectors = df[embed_col].tolist()
+        print(f"[VectorStore] Đang tải metadata từ: {config.META_PATH}")
+        with open(config.META_PATH, 'rb') as f:
+            self.unique_ids_list = pickle.load(f)
 
-    model_name = "BAAI/bge-small-en-v1.5"
-    embedding_model = HuggingFaceEmbeddings(model_name=model_name)
+        print(f" [VectorStore] Khởi tạo hoàn tất. Sẵn sàng tìm kiếm.")
 
-    db = FAISS.from_embeddings(
-        zip(texts, vectors),
-        embedding=embedding_model,
-        ids=ids,
-    )
+    def search(self, query_text, k=5):
+        """
+        Thực hiện tìm kiếm vector cơ bản.
+        Trả về: (list_of_unique_ids, list_of_positions, list_of_distances)
+        """
+        # Model BGE cần instruction "query: "
+        query_with_instruction = f"query: {query_text}"
 
-    db.save_local(save_dir)
-    print(f" Saved FAISS index to: {save_dir}")
+        query_vector = self.model.encode([query_with_instruction], normalize_embeddings=True)
+        query_vector = np.array(query_vector).astype('float32')
 
-    return db
+        D, I = self.index.search(query_vector, k)
 
-def load_faiss_index(path: str):
-    """
-    Load FAISS index đã lưu từ local.
-    Sử dụng cùng model embedding như khi build.
-    """
-    import os
-    from langchain_community.vectorstores import FAISS
-    from langchain_community.embeddings import HuggingFaceEmbeddings
+        retrieved_indices = I[0]
+        retrieved_distances = D[0]
 
-    if not os.path.exists(path):
-        raise FileNotFoundError(f" Không tìm thấy thư mục index: {path}")
+        retrieved_unique_ids = [self.unique_ids_list[i] for i in retrieved_indices]
 
-    print(f" Loading FAISS index from: {path}")
-
-    model_name = "BAAI/bge-small-en-v1.5"
-    embedding_model = HuggingFaceEmbeddings(model_name=model_name)
-
-    index = FAISS.load_local(
-        path,
-        embeddings=embedding_model,
-        allow_dangerous_deserialization=True
-    )
-
-    print("FAISS index loaded")
-    return index
-
-
-def test_query(index, query: str, k: int = 3):
-    """
-    Thử truy vấn top-k documents từ FAISS index
-    Trả về list các đoạn văn bản gần nhất
-    """
-    print(f" Query: {query}")
-
-    results = index.similarity_search(query, k= k)
-    if not results:
-        print("Không tìm thấy kết quả nào")
-        return []
-    print(f" Found {len(results)} results")
-    return [r.page_content for r in results]
-
+        return retrieved_unique_ids, retrieved_indices, retrieved_distances
