@@ -4,8 +4,10 @@ A personalized AI Book Assistant built with a Multi-tool Agent architecture, RAG
 
 This is an end-to-end AI Engineer portfolio project demonstrating the full lifecycle of building a modern AI system—from raw data processing to a fully interactive web application.
 
-## Demo
 
+## Demo
+You can watch the demo video for my BookInsight project here:
+[Watch the Demo Video on YouTube](https://www.youtube.com/watch?v=jZ-ebkbY-XI)
 
 Demo workflow example:
 
