@@ -9,15 +9,16 @@ This is an end-to-end AI Engineer portfolio project demonstrating the full lifec
 
 Demo workflow example:
 
-1. (Test RAG) "Summarize the book 'Service: A Navy SEAL at War'"
+1. (Test RAG) What is the book 'The Hobbit' about?
 
-2. (Test SQL) "What is the most expensive book in the database?"
+2. (Test Memory) Who is the author of that book?
 
-3. (Test Memory) "Who is the author of that book?"
+3. (RAG + Memory) Show me other books by that author
 
-4. (Test Personalization) "I like books by 'Stephen King'"
+4. (Test SQL) Okay. Now, show me the cheapest book in the 'Horror' category
 
-5. (Test Personalization) "Can you recommend a book for me?"
+
+5. (Test Personalization) I liked our talk about 'The Hobbit' (Fantasy), but I also asked for 'Horror'. Can you recommend a "Dark Fantasy" book?
 
 ## Features
 
