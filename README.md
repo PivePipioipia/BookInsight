@@ -106,7 +106,7 @@ This project does not commit the database or vector store to Git. You must build
 3. Set API Key
 Set your OpenAI API Key as an environment variable in your terminal:
 
-# Using PowerShell (or set in PyCharm Run Configurations)
+# Using PowerShell (or set in Run Configurations)
 $env:OPENAI_API_KEY="sk-..."
 
 4. Run the Application (2 Terminals)
